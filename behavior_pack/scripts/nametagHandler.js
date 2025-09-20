@@ -13,24 +13,31 @@ export class NametagHandler {
     /**
      * 创建带有生物信息的名牌
      */
-    createInfoNametag(mobData) {
+    createInfoNametag(mobData, entity = null) {
         if (!mobData) return null;
 
         try {
             const nametag = new ItemStack(this.nametagItemId, 1);
             
-            // 设置名牌名称
-            const displayName = `§6${mobData.name || '未命名生物'}的记录§r`;
+            // 获取生物的当前名字：优先使用实体的nameTag，然后是存储的mobData.name
+            const currentName = (entity && entity.nameTag) ? entity.nameTag : mobData.name;
+            const displayName = `§6${currentName || '未命名生物'}的记录§r`;
             nametag.nameTag = displayName;
 
             // 设置Lore（描述信息）
-            const lore = this.generateNametagLore(mobData);
+            const lore = this.generateNametagLore({
+                ...mobData,
+                name: currentName // 使用当前名字更新lore
+            });
             if (nametag.setLore) {
                 nametag.setLore(lore);
             }
 
             // 设置动态属性存储完整数据
-            this.setNametagData(nametag, mobData);
+            this.setNametagData(nametag, {
+                ...mobData,
+                name: currentName // 使用当前名字存储数据
+            });
 
             return nametag;
         } catch (error) {
@@ -74,18 +81,33 @@ export class NametagHandler {
      */
     setNametagData(nametag, mobData) {
         try {
-            // 使用动态属性存储完整的生物数据
-            const dataString = JSON.stringify({
+            // 生成唯一ID用于存储数据
+            const uniqueId = `nametag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // 压缩数据
+            const compressedData = this.compressData({
                 ...mobData,
                 version: '1.0.0',
                 createdAt: Date.now()
             });
             
-            // 由于动态属性可能有长度限制，我们压缩一些数据
-            const compressedData = this.compressData(mobData);
-            nametag.setDynamicProperty('tagvalhalla:mobdata', JSON.stringify(compressedData));
+            // 将数据存储到世界动态属性中
+            const dataString = JSON.stringify(compressedData);
+            world.setDynamicProperty(`tagvalhalla:nametag:${uniqueId}`, dataString);
+            
+            // 在名牌的lore中存储唯一ID（用于后续检索）
+            const currentLore = nametag.getLore ? nametag.getLore() : [];
+            const idLore = [`§8[ID:${uniqueId}]`];
+            const newLore = [...currentLore, ...idLore];
+            
+            if (nametag.setLore) {
+                nametag.setLore(newLore);
+            }
+            
+            return uniqueId;
         } catch (error) {
             console.error('设置名牌数据失败:', error);
+            return null;
         }
     }
 
@@ -94,7 +116,18 @@ export class NametagHandler {
      */
     getNametagData(nametag) {
         try {
-            const dataString = nametag.getDynamicProperty('tagvalhalla:mobdata');
+            // 从lore中提取唯一ID
+            const lore = nametag.getLore ? nametag.getLore() : [];
+            const idLine = lore.find(line => line.startsWith('§8[ID:'));
+            if (!idLine) return null;
+            
+            const idMatch = idLine.match(/§8\[ID:([^\]]+)\]/);
+            if (!idMatch) return null;
+            
+            const uniqueId = idMatch[1];
+            
+            // 从世界动态属性中获取数据
+            const dataString = world.getDynamicProperty(`tagvalhalla:nametag:${uniqueId}`);
             if (dataString) {
                 return JSON.parse(dataString);
             }
@@ -151,8 +184,8 @@ export class NametagHandler {
         if (!item || item.typeId !== this.nametagItemId) return false;
         
         try {
-            const data = item.getDynamicProperty('tagvalhalla:mobdata');
-            return !!data;
+            const lore = item.getLore ? item.getLore() : [];
+            return lore.some(line => line.startsWith('§8[ID:'));
         } catch {
             return false;
         }

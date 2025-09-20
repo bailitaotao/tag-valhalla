@@ -57,8 +57,8 @@ export class EventHandler {
                 if (this.isMobEntity(deadEntity)) {
                     const mobData = this.mobDataManager.getMobData(deadEntity.id);
                     if (mobData) {
-                        // 创建信息名牌
-                        const infoNametag = this.nametagHandler.createInfoNametag(mobData);
+                        // 创建信息名牌，传入实体以获取当前名字
+                        const infoNametag = this.nametagHandler.createInfoNametag(mobData, deadEntity);
                         
                         if (infoNametag) {
                             // 在死亡位置掉落名牌
@@ -101,7 +101,22 @@ export class EventHandler {
                     if (mobData) {
                         // 根据使用的物品判断互动类型
                         if (item) {
-                            if (this.isFoodItem(item)) {
+                            if (item.typeId === 'minecraft:name_tag') {
+                                // 玩家给实体命名 — 引擎可能在下一刻才把名字应用到实体上，延迟一 tick 再读取实体的 nameTag
+                                this.mobDataManager.recordInteraction(entity.id, 'named');
+                                system.runTimeout(() => {
+                                    try {
+                                        const appliedName = (entity && entity.nameTag) ? entity.nameTag : (item.nameTag || '');
+                                        if (appliedName) {
+                                            mobData.name = appliedName;
+                                            mobData.isNamed = true;
+                                            if (this.mobDataManager.saveData) this.mobDataManager.saveData();
+                                        }
+                                    } catch (e) {
+                                        console.error('更新命名失败:', e);
+                                    }
+                                }, 1);
+                            } else if (this.isFoodItem(item)) {
                                 this.mobDataManager.recordInteraction(entity.id, 'fed');
                                 this.mobDataManager.updateAffection(entity.id, 5);
                             } else if (this.isHealingItem(item)) {

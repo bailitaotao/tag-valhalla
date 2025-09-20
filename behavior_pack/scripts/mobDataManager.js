@@ -155,8 +155,36 @@ export class MobDataManager {
                 playerData: Object.fromEntries(this.playerData),
                 lastSaved: Date.now()
             };
-            
-            world.setDynamicProperty('tagvalhalla:data', JSON.stringify(dataToSave));
+
+            const fullString = JSON.stringify(dataToSave);
+            const MAX_LEN = 32767; // dynamic property max length in Minecraft
+
+            // Clear any previous stored keys first (single key, count, and chunked keys)
+            world.setDynamicProperty('tagvalhalla:data', undefined);
+            world.setDynamicProperty('tagvalhalla:data:count', undefined);
+            let i = 0;
+            while (world.getDynamicProperty(`tagvalhalla:data:${i}`) !== undefined) {
+                world.setDynamicProperty(`tagvalhalla:data:${i}`, undefined);
+                i++;
+            }
+
+            if (fullString.length <= MAX_LEN) {
+                world.setDynamicProperty('tagvalhalla:data', fullString);
+                // ensure no leftover chunked props
+                world.setDynamicProperty('tagvalhalla:data:count', 1);
+                return;
+            }
+
+            // Save as numbered chunks
+            const chunks = [];
+            for (let offset = 0; offset < fullString.length; offset += MAX_LEN) {
+                chunks.push(fullString.slice(offset, offset + MAX_LEN));
+            }
+
+            for (let idx = 0; idx < chunks.length; idx++) {
+                world.setDynamicProperty(`tagvalhalla:data:${idx}`, chunks[idx]);
+            }
+            world.setDynamicProperty('tagvalhalla:data:count', chunks.length);
         } catch (error) {
             console.error('保存数据失败:', error);
         }
@@ -167,7 +195,26 @@ export class MobDataManager {
      */
     loadData() {
         try {
-            const savedData = world.getDynamicProperty('tagvalhalla:data');
+            // Try single-property first
+            const single = world.getDynamicProperty('tagvalhalla:data');
+            let savedData = null;
+            if (single) {
+                savedData = single;
+            } else {
+                const count = world.getDynamicProperty('tagvalhalla:data:count');
+                if (typeof count === 'number' && count > 0) {
+                    let parts = [];
+                    for (let idx = 0; idx < count; idx++) {
+                        const part = world.getDynamicProperty(`tagvalhalla:data:${idx}`);
+                        if (typeof part !== 'string') {
+                            throw new Error(`Missing dynamic property chunk: tagvalhalla:data:${idx}`);
+                        }
+                        parts.push(part);
+                    }
+                    savedData = parts.join('');
+                }
+            }
+
             if (savedData) {
                 const data = JSON.parse(savedData);
                 this.mobData = new Map(Object.entries(data.mobData || {}));
