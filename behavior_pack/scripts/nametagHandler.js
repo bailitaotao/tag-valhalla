@@ -1,6 +1,6 @@
 /**
- * 名牌处理器
- * 负责生成和处理带有生物信息的名牌
+ * Name Tag Handler
+ * Handles generation and processing of name tags with creature information
  */
 
 import { world, ItemStack } from '@minecraft/server';
@@ -11,7 +11,7 @@ export class NametagHandler {
     }
 
     /**
-     * 创建带有生物信息的名牌
+     * Create name tag with creature information
      */
     createInfoNametag(mobData, entity = null) {
         if (!mobData) return null;
@@ -19,83 +19,94 @@ export class NametagHandler {
         try {
             const nametag = new ItemStack(this.nametagItemId, 1);
             
-            // 获取生物的当前名字：优先使用实体的nameTag，然后是存储的mobData.name
+            // Calculate rarity
+            const rarity = this.calculateRarity(mobData);
+            const rarityConfig = this.getRarityConfig(rarity);
+            
+            // Get creature's current name: prioritize entity's nameTag, then stored mobData.name
             const currentName = (entity && entity.nameTag) ? entity.nameTag : mobData.name;
-            const displayName = `§6${currentName || '未命名生物'}的记录§r`;
+            const displayName = `${rarityConfig.name} ${currentName || 'Unnamed Creature'}'s Record§r`;
             nametag.nameTag = displayName;
 
             // 设置Lore（描述信息）
             const lore = this.generateNametagLore({
                 ...mobData,
-                name: currentName // 使用当前名字更新lore
+                name: currentName, // 使用当前名字更新lore
+                rarity: rarity // Add rarity information
             });
             if (nametag.setLore) {
                 nametag.setLore(lore);
             }
 
+            // Apply rarity visual effects
+            this.applyRarityEffects(nametag, rarity);
+
             // 设置动态属性存储完整数据
             this.setNametagData(nametag, {
                 ...mobData,
-                name: currentName // 使用当前名字存储数据
+                name: currentName, // 使用当前名字存储数据
+                rarity: rarity // Store rarity
             });
 
             return nametag;
         } catch (error) {
-            console.error('创建信息名牌失败:', error);
+                        console.error('Failed to apply rarity effects:', error);
             return null;
         }
     }
 
     /**
-     * 生成名牌的Lore信息
+     * Generate name tag's lore information
      */
     generateNametagLore(mobData) {
         const hours = Math.floor(mobData.lifetime / 3600);
         const minutes = Math.floor((mobData.lifetime % 3600) / 60);
         const seconds = mobData.lifetime % 60;
 
+        const rarityConfig = this.getRarityConfig(mobData.rarity || 'common');
+
         return [
-            `§7=== 生物信息记录 ===§r`,
-            `§e类型: §f${mobData.typeId.replace('minecraft:', '')}`,
-            `§e生存时间: §f${hours}时${minutes}分${seconds}秒`,
-            `§e好感度: §f${mobData.affection}/100`,
-            `§e击杀统计:§r`,
-            `  §7- 玩家: §f${mobData.killCount.players}`,
-            `  §7- 生物: §f${mobData.killCount.mobs}`,
-            `§e互动统计:§r`,
-            `  §7- 喂食: §f${mobData.interactions.fed}次`,
-            `  §7- 抚摸: §f${mobData.interactions.petted}次`,
-            `  §7- 治疗: §f${mobData.interactions.healed}次`,
-            `§e生成信息:§r`,
-            `  §7- 维度: §f${mobData.location.dimension}`,
-            `  §7- 坐标: §f(${mobData.location.x}, ${mobData.location.y}, ${mobData.location.z})`,
-            `§e健康信息:§r`,
-            `  §7- 血量: §f${mobData.health.current}/${mobData.health.max}`,
-            mobData.owner ? `§e主人: §f${mobData.owner}` : '',
-            `§8记录于: ${new Date(mobData.spawnTime).toLocaleString()}§r`
+            `${rarityConfig.name}§7=== Creature Information Record ===§r`,
+            `§eType: §f${mobData.typeId.replace('minecraft:', '')}`,
+            `§eSurvival Time: §f${hours}h${minutes}m${seconds}s`,
+            `§eAffection: §f${mobData.affection}/100`,
+            `§eKill Statistics:§r`,
+            `  §7- Players: §f${mobData.killCount.players}`,
+            `  §7- Creatures: §f${mobData.killCount.mobs}`,
+            `§eInteraction Statistics:§r`,
+            `  §7- Fed: §f${mobData.interactions.fed} times`,
+            `  §7- Petted: §f${mobData.interactions.petted} times`,
+            `  §7- Healed: §f${mobData.interactions.healed} times`,
+            `§eSpawn Information:§r`,
+            `  §7- Dimension: §f${mobData.location.dimension}`,
+            `  §7- Coordinates: §f(${mobData.location.x}, ${mobData.location.y}, ${mobData.location.z})`,
+            `§eHealth Information:§r`,
+            `  §7- Health: §f${mobData.health.current}/${mobData.health.max}`,
+            mobData.owner ? `§eOwner: §f${mobData.owner}` : '',
+            `§8Recorded at: ${new Date(mobData.spawnTime).toLocaleString()}§r`
         ].filter(line => line);
     }
 
     /**
-     * 在名牌上设置数据
+     * Set data on name tag
      */
     setNametagData(nametag, mobData) {
         try {
-            // 生成唯一ID用于存储数据
+            // Generate unique ID for data storage
             const uniqueId = `nametag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             
-            // 压缩数据
+            // Compress data
             const compressedData = this.compressData({
                 ...mobData,
                 version: '1.0.0',
                 createdAt: Date.now()
             });
             
-            // 将数据存储到世界动态属性中
+            // Store data in world dynamic properties
             const dataString = JSON.stringify(compressedData);
             world.setDynamicProperty(`tagvalhalla:nametag:${uniqueId}`, dataString);
             
-            // 在名牌的lore中存储唯一ID（用于后续检索）
+            // Store unique ID in name tag's lore (for later retrieval)
             const currentLore = nametag.getLore ? nametag.getLore() : [];
             const idLore = [`§8[ID:${uniqueId}]`];
             const newLore = [...currentLore, ...idLore];
@@ -106,17 +117,17 @@ export class NametagHandler {
             
             return uniqueId;
         } catch (error) {
-            console.error('设置名牌数据失败:', error);
+            console.error('Failed to set name tag data:', error);
             return null;
         }
     }
 
     /**
-     * 从名牌获取数据
+     * Get data from name tag
      */
     getNametagData(nametag) {
         try {
-            // 从lore中提取唯一ID
+            // Extract unique ID from lore
             const lore = nametag.getLore ? nametag.getLore() : [];
             const idLine = lore.find(line => line.startsWith('§8[ID:'));
             if (!idLine) return null;
@@ -126,19 +137,19 @@ export class NametagHandler {
             
             const uniqueId = idMatch[1];
             
-            // 从世界动态属性中获取数据
+            // Get data from world dynamic properties
             const dataString = world.getDynamicProperty(`tagvalhalla:nametag:${uniqueId}`);
             if (dataString) {
                 return JSON.parse(dataString);
             }
         } catch (error) {
-            console.error('获取名牌数据失败:', error);
+            console.error('Failed to get name tag data:', error);
         }
         return null;
     }
 
     /**
-     * 压缩数据以适应存储限制
+     * Compress data to fit storage limits
      */
     compressData(mobData) {
         return {
@@ -153,12 +164,13 @@ export class NametagHandler {
             loc: mobData.location,
             hp: mobData.health,
             owner: mobData.owner,
-            achievements: mobData.achievements
+            achievements: mobData.achievements,
+            rarity: mobData.rarity || 'common'
         };
     }
 
     /**
-     * 解压缩数据
+     * Decompress data
      */
     decompressData(compressedData) {
         return {
@@ -173,12 +185,13 @@ export class NametagHandler {
             location: compressedData.loc,
             health: compressedData.hp,
             owner: compressedData.owner,
-            achievements: compressedData.achievements || []
+            achievements: compressedData.achievements || [],
+            rarity: compressedData.rarity || 'common'
         };
     }
 
     /**
-     * 检查是否是信息名牌
+     * Check if it's an info name tag
      */
     isInfoNametag(item) {
         if (!item || item.typeId !== this.nametagItemId) return false;
@@ -192,7 +205,7 @@ export class NametagHandler {
     }
 
     /**
-     * 生成名牌显示的详细信息
+     * Generate detailed information for name tag display
      */
     getDetailedInfo(nametag) {
         const data = this.getNametagData(nametag);
@@ -203,48 +216,194 @@ export class NametagHandler {
     }
 
     /**
-     * 生成详细信息文本
+     * Generate detailed information text
      */
     generateDetailedInfoText(mobData) {
         const hours = Math.floor(mobData.lifetime / 3600);
         const minutes = Math.floor((mobData.lifetime % 3600) / 60);
         
-        let info = `§6=== ${mobData.name || '未命名生物'} 详细信息 ===§r\n\n`;
-        info += `§e基础信息:§r\n`;
-        info += `§7• 类型: §f${mobData.typeId.replace('minecraft:', '')}\n`;
-        info += `§7• 生存时间: §f${hours}小时${minutes}分钟\n`;
-        info += `§7• 好感度: §f${mobData.affection}/100\n\n`;
+        const achievements = this.getAchievementDefinitions();
         
-        info += `§e战斗统计:§r\n`;
-        info += `§7• 击杀玩家: §f${mobData.killCount.players}\n`;
-        info += `§7• 击杀生物: §f${mobData.killCount.mobs}\n`;
+        let info = `§6=== ${mobData.name || 'Unnamed Mob'} Details ===§r\n\n`;
+        info += `§eBasic Information:§r\n`;
+        info += `§7• Type: §f${mobData.typeId.replace('minecraft:', '')}\n`;
+        info += `§7• Survival Time: §f${hours} hours ${minutes} minutes\n`;
+        info += `§7• Affection: §f${mobData.affection}/100\n\n`;
+        
+        info += `§eCombat Statistics:§r\n`;
+        info += `§7• Players Killed: §f${mobData.killCount.players}\n`;
+        info += `§7• Mobs Killed: §f${mobData.killCount.mobs}\n`;
         
         if (Object.keys(mobData.killCount.specific).length > 0) {
-            info += `§7• 详细击杀:\n`;
+            info += `§7• Detailed Kills:\n`;
             for (const [type, count] of Object.entries(mobData.killCount.specific)) {
                 info += `§8  - ${type.replace('minecraft:', '')}: §f${count}\n`;
             }
         }
         
-        info += `\n§e互动记录:§r\n`;
-        info += `§7• 喂食次数: §f${mobData.interactions.fed}\n`;
-        info += `§7• 抚摸次数: §f${mobData.interactions.petted}\n`;
-        info += `§7• 治疗次数: §f${mobData.interactions.healed}\n\n`;
+        info += `\n§eInteraction Records:§r\n`;
+        info += `§7• Times Fed: §f${mobData.interactions.fed}\n`;
+        info += `§7• Times Petted: §f${mobData.interactions.petted}\n`;
+        info += `§7• Times Healed: §f${mobData.interactions.healed}\n\n`;
         
-        info += `§e位置信息:§r\n`;
-        info += `§7• 生成维度: §f${mobData.location.dimension}\n`;
-        info += `§7• 生成坐标: §f(${mobData.location.x}, ${mobData.location.y}, ${mobData.location.z})\n\n`;
+        info += `§eLocation Information:§r\n`;
+        info += `§7• Spawn Dimension: §f${mobData.location.dimension}\n`;
+        info += `§7• Spawn Coordinates: §f(${mobData.location.x}, ${mobData.location.y}, ${mobData.location.z})\n\n`;
         
-        info += `§e健康状态:§r\n`;
-        info += `§7• 血量: §f${mobData.health.current}/${mobData.health.max}\n\n`;
+        info += `§eHealth Status:§r\n`;
+        info += `§7• Health: §f${mobData.health.current}/${mobData.health.max}\n\n`;
         
         if (mobData.owner) {
-            info += `§e归属信息:§r\n`;
-            info += `§7• 主人: §f${mobData.owner}\n\n`;
+            info += `§eOwnership Information:§r\n`;
+            info += `§7• Owner: §f${mobData.owner}\n\n`;
         }
         
-        info += `§8记录时间: ${new Date(mobData.spawnTime).toLocaleString()}§r`;
+        // Display achievements
+        if (mobData.achievements && mobData.achievements.length > 0) {
+            info += `§eUnlocked Achievements:§r\n`;
+            for (const achievementKey of mobData.achievements) {
+                const achievement = achievements[achievementKey];
+                if (achievement) {
+                    info += `§7• ${achievement.icon} ${achievement.name}: §f${achievement.description}\n`;
+                }
+            }
+            info += '\n';
+        }
+        
+        info += `§8Recorded at: ${new Date(mobData.spawnTime).toLocaleString()}§r`;
         
         return info;
+    }
+
+    /**
+     * Calculate name tag rarity
+     */
+    calculateRarity(mobData) {
+        let score = 0;
+        
+        // Survival time score (max 20 points)
+        const hours = mobData.lifetime / 3600;
+        if (hours >= 24) score += 20; // 24 hours+
+        else if (hours >= 12) score += 15; // 12 hours+
+        else if (hours >= 6) score += 10; // 6 hours+
+        else if (hours >= 1) score += 5; // 1 hour+
+        
+        // Affection score (max 15 points)
+        if (mobData.affection >= 90) score += 15;
+        else if (mobData.affection >= 70) score += 10;
+        else if (mobData.affection >= 50) score += 5;
+        
+        // Kill statistics score (max 15 points)
+        const totalKills = mobData.killCount.players + mobData.killCount.mobs;
+        if (totalKills >= 100) score += 15;
+        else if (totalKills >= 50) score += 10;
+        else if (totalKills >= 20) score += 5;
+        
+        // Interaction count score (max 10 points)
+        const totalInteractions = mobData.interactions.fed + mobData.interactions.petted + mobData.interactions.healed;
+        if (totalInteractions >= 50) score += 10;
+        else if (totalInteractions >= 20) score += 5;
+        
+        // Special achievement score (max 10 points)
+        if (mobData.achievements && mobData.achievements.length > 0) {
+            score += Math.min(10, mobData.achievements.length * 2);
+        }
+        
+        // Rare mob type bonus
+        const rareTypes = ['minecraft:ender_dragon', 'minecraft:wither', 'minecraft:elder_guardian'];
+        if (rareTypes.includes(mobData.typeId)) score += 20;
+        
+        // Determine rarity
+        if (score >= 60) return 'legendary';
+        else if (score >= 40) return 'epic';
+        else if (score >= 20) return 'rare';
+        else return 'common';
+    }
+
+    /**
+     * Get rarity configuration
+     */
+    getRarityConfig(rarity) {
+        const configs = {
+            common: {
+                name: '§7Common§r',
+                color: '§7',
+                glow: false,
+                enchant: false
+            },
+            rare: {
+                name: '§9Rare§r',
+                color: '§9',
+                glow: true,
+                enchant: false
+            },
+            epic: {
+                name: '§5Epic§r',
+                color: '§5',
+                glow: true,
+                enchant: true
+            },
+            legendary: {
+                name: '§6Legendary§r',
+                color: '§6',
+                glow: true,
+                enchant: true
+            }
+        };
+        
+        return configs[rarity] || configs.common;
+    }
+
+    /**
+     * Apply rarity visual effects
+     */
+    applyRarityEffects(nametag, rarity) {
+        try {
+            const rarityConfig = this.getRarityConfig(rarity);
+            
+            // Add enchantment effects for rare and above name tags
+            if (rarityConfig.enchant && nametag.setComponent) {
+                nametag.setComponent('minecraft:enchantments', {
+                    enchantments: {
+                        unbreaking: 1
+                    }
+                });
+            }
+            
+            // Add custom data marker for glowing rarities
+            if (rarityConfig.glow) {
+                // Use dynamic properties to mark glowing
+                const uniqueId = `rarity_glow_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                world.setDynamicProperty(`tagvalhalla:glow:${uniqueId}`, rarity);
+                
+                // Add glow marker to lore
+                const currentLore = nametag.getLore ? nametag.getLore() : [];
+                const glowLore = [`§8[GLOW:${uniqueId}]`];
+                const newLore = [...currentLore, ...glowLore];
+                
+                if (nametag.setLore) {
+                    nametag.setLore(newLore);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to apply rarity effects:', error);
+        }
+    }
+
+    /**
+     * Get achievement definitions (from MobDataManager)
+     */
+    getAchievementDefinitions() {
+        // Need to access MobDataManager here, but due to circular dependency, define directly
+        return {
+            long_liver: { name: 'Long Lived', description: 'Survived over 24 hours', icon: '⏰' },
+            friendly: { name: 'Friendly', description: 'Reached 100 affection', icon: '💝' },
+            warrior: { name: 'Warrior', description: 'Killed 50 mobs', icon: '⚔️' },
+            killer: { name: 'Killer', description: 'Killed 10 players', icon: '💀' },
+            beloved: { name: 'Beloved', description: 'Fed 100 times', icon: '🍖' },
+            pampered: { name: 'Pampered', description: 'Petted 200 times', icon: '🖐️' },
+            legendary_beast: { name: 'Legendary Beast', description: 'Rare mob with legendary name tag', icon: '👑' },
+            perfect_companion: { name: 'Perfect Companion', description: 'Achieved both Long Lived and Friendly', icon: '🌟' }
+        };
     }
 }

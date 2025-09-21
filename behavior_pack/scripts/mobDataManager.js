@@ -1,19 +1,19 @@
 /**
- * 生物数据管理器
- * 负责存储和管理生物的各种信息
+ * Mob Data Manager
+ * Responsible for storing and managing various creature information
  */
 
 import { world, Entity } from '@minecraft/server';
 
 export class MobDataManager {
     constructor() {
-        this.mobData = new Map(); // 存储生物数据
-        this.playerData = new Map(); // 存储玩家数据
+        this.mobData = new Map(); // Store mob data
+        this.playerData = new Map(); // Store player data
         this.loadData();
     }
 
     /**
-     * 获取生物数据结构
+     * Get mob data structure
      */
     createMobData(entity) {
         if (!entity) return null;
@@ -32,13 +32,13 @@ export class MobDataManager {
                 killCount: {
                     players: 0,
                     mobs: 0,
-                    specific: {} // 具体击杀类型统计
+                    specific: {} // Specific kill type statistics
                 },
-                affection: 0, // 好感度
+                affection: 0, // Affection level
                 interactions: {
-                    fed: 0, // 喂食次数
-                    petted: 0, // 抚摸次数
-                    healed: 0 // 治疗次数
+                    fed: 0, // Feeding count
+                    petted: 0, // Petting count
+                    healed: 0 // Healing count
                 },
                 location: {
                     dimension: dimension ? dimension.id : 'unknown',
@@ -50,19 +50,19 @@ export class MobDataManager {
                     max: healthComponent ? healthComponent.maxValue : 20,
                     current: healthComponent ? healthComponent.currentValue : 20
                 },
-                owner: null, // 如果是宠物，记录主人
+                owner: null, // Record owner if it's a pet
                 isNamed: !!entity.nameTag,
-                achievements: [], // 成就列表
-                customData: {} // 自定义数据
+                achievements: [], // Achievement list
+                customData: {} // Custom data
             };
         } catch (error) {
-            console.error('创建生物数据失败:', error);
+            console.error('Failed to create mob data:', error);
             return null;
         }
     }
 
     /**
-     * 注册新生物
+     * Register new mob
      */
     registerMob(entity) {
         if (!entity || !entity.id) return false;
@@ -76,30 +76,30 @@ export class MobDataManager {
                 }
             }
         } catch (error) {
-            console.error('注册生物失败:', error);
+            console.error('Failed to register mob:', error);
         }
         return false;
     }
 
     /**
-     * 获取生物数据
+     * Get mob data
      */
     getMobData(entityId) {
         return this.mobData.get(entityId);
     }
 
     /**
-     * 更新生物生存时间
+     * Update mob lifetime
      */
     updateMobLifetime() {
         const currentTime = Date.now();
         for (const [entityId, data] of this.mobData) {
-            data.lifetime = Math.floor((currentTime - data.spawnTime) / 1000); // 秒
+            data.lifetime = Math.floor((currentTime - data.spawnTime) / 1000); // seconds
         }
     }
 
     /**
-     * 记录击杀事件
+     * Record kill event
      */
     recordKill(killerEntityId, victimTypeId) {
         const killerData = this.mobData.get(killerEntityId);
@@ -118,18 +118,18 @@ export class MobDataManager {
     }
 
     /**
-     * 更新好感度
+     * Update affection
      */
     updateAffection(entityId, amount) {
         const data = this.mobData.get(entityId);
         if (data) {
             data.affection += amount;
-            data.affection = Math.max(0, Math.min(100, data.affection)); // 限制在0-100之间
+            data.affection = Math.max(0, Math.min(100, data.affection)); // Limit between 0-100
         }
     }
 
     /**
-     * 记录互动
+     * Record interaction
      */
     recordInteraction(entityId, type) {
         const data = this.mobData.get(entityId);
@@ -139,14 +139,14 @@ export class MobDataManager {
     }
 
     /**
-     * 移除生物数据
+     * Remove mob data
      */
     removeMobData(entityId) {
         return this.mobData.delete(entityId);
     }
 
     /**
-     * 保存数据到世界存储
+     * Save data to world storage
      */
     saveData() {
         try {
@@ -186,12 +186,12 @@ export class MobDataManager {
             }
             world.setDynamicProperty('tagvalhalla:data:count', chunks.length);
         } catch (error) {
-            console.error('保存数据失败:', error);
+            console.error('Failed to save data:', error);
         }
     }
 
     /**
-     * 从世界存储加载数据
+     * Load data from world storage
      */
     loadData() {
         try {
@@ -221,12 +221,12 @@ export class MobDataManager {
                 this.playerData = new Map(Object.entries(data.playerData || {}));
             }
         } catch (error) {
-            console.error('加载数据失败:', error);
+            console.error('Failed to load data:', error);
         }
     }
 
     /**
-     * 获取格式化的生物信息文本
+     * Get formatted mob info text
      */
     getFormattedMobInfo(entityId) {
         const data = this.getMobData(entityId);
@@ -237,16 +237,193 @@ export class MobDataManager {
         const seconds = data.lifetime % 60;
 
         return [
-            `§e=== ${data.name || '未命名生物'} ===§r`,
-            `§7类型: §f${data.typeId.replace('minecraft:', '')}`,
-            `§7生存时间: §f${hours}时${minutes}分${seconds}秒`,
-            `§7好感度: §f${data.affection}/100`,
-            `§7击杀统计: §f玩家${data.killCount.players} | 生物${data.killCount.mobs}`,
-            `§7互动次数: §f喂食${data.interactions.fed} | 抚摸${data.interactions.petted}`,
-            `§7生成位置: §f${data.location.dimension} (${data.location.x}, ${data.location.y}, ${data.location.z})`,
-            `§7当前血量: §f${data.health.current}/${data.health.max}`,
-            data.owner ? `§7主人: §f${data.owner}` : '',
-            `§8记录时间: ${new Date(data.spawnTime).toLocaleString()}`
+            `§e=== ${data.name || 'Unnamed Creature'} ===§r`,
+            `§7Type: §f${data.typeId.replace('minecraft:', '')}`,
+            `§7Survival Time: §f${hours}h${minutes}m${seconds}s`,
+            `§7Affection: §f${data.affection}/100`,
+            `§7Kill Stats: §fPlayers ${data.killCount.players} | Creatures ${data.killCount.mobs}`,
+            `§7Interactions: §fFed ${data.interactions.fed} | Petted ${data.interactions.petted}`,
+            `§7Spawn Location: §f${data.location.dimension} (${data.location.x}, ${data.location.y}, ${data.location.z})`,
+            `§7Current Health: §f${data.health.current}/${data.health.max}`,
+            data.owner ? `§7Owner: §f${data.owner}` : '',
+            `§8Recorded: ${new Date(data.spawnTime).toLocaleString()}`
         ].filter(line => line).join('\n');
+    }
+
+    /**
+     * Achievement definitions
+     */
+    getAchievementDefinitions() {
+        return {
+            // Survival achievements
+            long_liver: {
+                name: 'Long Lived',
+                description: 'Survive for more than 24 hours',
+                icon: '⏰',
+                condition: (mobData) => mobData.lifetime >= 86400, // 24 hours
+                reward: { type: 'affection', value: 10 }
+            },
+            friendly: {
+                name: 'Friendly Messenger',
+                description: 'Reach 100 affection',
+                icon: '💝',
+                condition: (mobData) => mobData.affection >= 100,
+                reward: { type: 'experience', value: 50 }
+            },
+            
+            // Combat achievements
+            warrior: {
+                name: 'Warrior',
+                description: 'Kill 50 creatures',
+                icon: '⚔️',
+                condition: (mobData) => (mobData.killCount.players + mobData.killCount.mobs) >= 50,
+                reward: { type: 'health_boost', value: 5 }
+            },
+            killer: {
+                name: 'Killer',
+                description: 'Kill 10 players',
+                icon: '💀',
+                condition: (mobData) => mobData.killCount.players >= 10,
+                reward: { type: 'damage_boost', value: 2 }
+            },
+            
+            // Interaction achievements
+            beloved: {
+                name: 'Beloved',
+                description: 'Fed 100 times',
+                icon: '🍖',
+                condition: (mobData) => mobData.interactions.fed >= 100,
+                reward: { type: 'regeneration', value: 30 }
+            },
+            pampered: {
+                name: 'Pampered',
+                description: 'Petted 200 times',
+                icon: '🖐️',
+                condition: (mobData) => mobData.interactions.petted >= 200,
+                reward: { type: 'speed_boost', value: 60 }
+            },
+            
+            // Special achievements
+            legendary_beast: {
+                name: 'Legendary Beast',
+                description: 'Legendary name tag for rare creatures',
+                icon: '👑',
+                condition: (mobData) => {
+                    const rareTypes = ['minecraft:ender_dragon', 'minecraft:wither', 'minecraft:elder_guardian'];
+                    return rareTypes.includes(mobData.typeId);
+                },
+                reward: { type: 'glow', value: true }
+            },
+            perfect_companion: {
+                name: 'Perfect Companion',
+                description: 'Achieve both Long Lived and Friendly Messenger',
+                icon: '🌟',
+                condition: (mobData) => mobData.lifetime >= 86400 && mobData.affection >= 100,
+                reward: { type: 'all_buffs', value: true }
+            }
+        };
+    }
+
+    /**
+     * Check and unlock achievements
+     */
+    checkAndUnlockAchievements(entityId) {
+        const mobData = this.getMobData(entityId);
+        if (!mobData) return [];
+        
+        const achievements = this.getAchievementDefinitions();
+        const unlockedAchievements = [];
+        
+        for (const [key, achievement] of Object.entries(achievements)) {
+            if (!mobData.achievements.includes(key) && achievement.condition(mobData)) {
+                mobData.achievements.push(key);
+                unlockedAchievements.push({
+                    key: key,
+                    ...achievement
+                });
+            }
+        }
+        
+        return unlockedAchievements;
+    }
+
+    /**
+     * Apply achievement reward
+     */
+    applyAchievementReward(player, achievement, entity) {
+        try {
+            const reward = achievement.reward;
+            
+            switch (reward.type) {
+                case 'affection':
+                    // Increase affection
+                    if (entity) {
+                        this.updateAffection(entity.id, reward.value);
+                        player.sendMessage(`§aAchievement unlocked: ${achievement.icon} ${achievement.name}§r\n§7Reward: Affection +${reward.value}`);
+                    }
+                    break;
+                    
+                case 'experience':
+                    // Give experience
+                    player.addExperience(reward.value);
+                    player.sendMessage(`§aAchievement unlocked: ${achievement.icon} ${achievement.name}§r\n§7Reward: Gained ${reward.value} experience`);
+                    break;
+                    
+                case 'health_boost':
+                    // Temporary health boost
+                    if (entity) {
+                        const healthComponent = entity.getComponent('minecraft:health');
+                        if (healthComponent) {
+                            const newMaxHealth = healthComponent.maxValue + reward.value;
+                            healthComponent.setCurrentValue(Math.min(healthComponent.currentValue, newMaxHealth));
+                            player.sendMessage(`§aAchievement unlocked: ${achievement.icon} ${achievement.name}§r\n§7Reward: Max health increased by ${reward.value} points`);
+                        }
+                    }
+                    break;
+                    
+                case 'damage_boost':
+                    // Temporary damage boost (via effect)
+                    player.addEffect('minecraft:strength', reward.value * 20, { amplifier: 1 });
+                    player.sendMessage(`§aAchievement unlocked: ${achievement.icon} ${achievement.name}§r\n§7Reward: Strength effect for ${reward.value} seconds`);
+                    break;
+                    
+                case 'regeneration':
+                    // Regeneration effect
+                    if (entity) {
+                        entity.addEffect('minecraft:regeneration', reward.value * 20, { amplifier: 1 });
+                        player.sendMessage(`§aAchievement unlocked: ${achievement.icon} ${achievement.name}§r\n§7Reward: Regeneration effect for ${reward.value} seconds`);
+                    }
+                    break;
+                    
+                case 'speed_boost':
+                    // Speed boost
+                    if (entity) {
+                        entity.addEffect('minecraft:speed', reward.value * 20, { amplifier: 1 });
+                        player.sendMessage(`§aAchievement unlocked: ${achievement.icon} ${achievement.name}§r\n§7Reward: Speed effect for ${reward.value} seconds`);
+                    }
+                    break;
+                    
+                case 'glow':
+                    // Glow effect
+                    if (entity) {
+                        entity.addEffect('minecraft:glowing', 600 * 20, { amplifier: 1 }); // 10 minutes
+                        player.sendMessage(`§aAchievement unlocked: ${achievement.icon} ${achievement.name}§r\n§7Reward: Glowing effect for 10 minutes`);
+                    }
+                    break;
+                    
+                case 'all_buffs':
+                    // All buff effects
+                    if (entity) {
+                        entity.addEffect('minecraft:regeneration', 300 * 20, { amplifier: 1 });
+                        entity.addEffect('minecraft:speed', 300 * 20, { amplifier: 1 });
+                        entity.addEffect('minecraft:strength', 300 * 20, { amplifier: 1 });
+                        entity.addEffect('minecraft:glowing', 300 * 20, { amplifier: 1 });
+                        player.sendMessage(`§aAchievement unlocked: ${achievement.icon} ${achievement.name}§r\n§7Reward: All buff effects for 5 minutes`);
+                    }
+                    break;
+            }
+        } catch (error) {
+            console.error('Failed to apply achievement reward:', error);
+        }
     }
 }

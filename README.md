@@ -30,9 +30,16 @@ Want a meaningful way to remember your pets or legendary mobs? TagValhalla | Lif
 - 📍 Location info: spawn position and dimension
 - 🩺 Health status: max and current health
 - 👥 Owner tracking: records owner info for tamable mobs
+- 🌟 **NEW** Rarity System: Name Tags now have rarity levels (Common, Rare, Epic, Legendary) based on mob achievements
+- 🏆 **NEW** Achievement System: Unlock achievements for special mob behaviors with rewards
+- ✨ **NEW** Special Effects: Use rare Name Tags to gain temporary buffs (glowing, speed, strength, etc.)
+- 🔨 **NEW** Crafting System: Combine multiple Name Tags to create "Mob Essence" for permanent bonuses
+- 🧭 **NEW** Tracking Feature: Use Name Tags to locate nearby mobs of the same type
+- 🐾 **NEW** Pet Summoning: Epic and Legendary Name Tags can summon temporary pet companions
 
 ## Project Structure
 
+```
 ```
 TagValhalla/
 ├── behavior_pack/                 # Behavior pack
@@ -43,8 +50,11 @@ TagValhalla/
 │   │   ├── nametagHandler.js     # Name tag handler
 │   │   └── eventHandler.js       # Event handler
 │   ├── items/                    # Item definitions
-│   │   └── info_nametag.json     # Info Name Tag item
+│   │   ├── info_nametag.json     # Info Name Tag item
+│   │   └── mob_essence.json      # Mob Essence item (NEW)
 │   ├── entities/                 # Entity definitions
+│   ├── recipes/                  # Crafting recipes (NEW)
+│   │   └── mob_essence.json      # Mob Essence crafting recipe
 │   └── loot_tables/              # Loot tables
 │       └── mob_death_nametag.json
 ├── resource_pack/                # Resource pack
@@ -131,6 +141,59 @@ Each recorded mob contains:
 4. Collect records: gather tags from different mobs to build your bestiary
 
 See more in [USAGE.md](./USAGE.md)
+
+## New Features (v2.0)
+
+### 🌟 Rarity System
+Name Tags now have four rarity levels based on mob achievements:
+- **Common (普通)**: Default rarity
+- **Rare (稀有)**: Long survival time, high affection, or many kills
+- **Epic (史诗)**: Exceptional stats with special effects
+- **Legendary (传奇)**: Rare mobs like Ender Dragon, Wither, or Elder Guardian
+
+### 🏆 Achievement System
+Unlock achievements for special mob behaviors:
+- ⏰ **Long Lifer**: Survive over 24 hours
+- 💝 **Friendly**: Reach 100 affection
+- ⚔️ **Warrior**: Kill 50+ mobs
+- 💀 **Killer**: Kill 10+ players
+- 🍖 **Beloved**: Fed 100+ times
+- 🖐️ **Pampered**: Petted 200+ times
+- 👑 **Legendary Beast**: Rare boss mobs
+- 🌟 **Perfect Companion**: Long life + max affection
+
+Achievements grant rewards like experience, health boosts, or special effects.
+
+### ✨ Special Effects
+Using Name Tags activates rarity-based effects:
+- **Rare**: Glowing (30s) + Speed boost (15s)
+- **Epic**: All rare effects + Strength (20s) + Regeneration (10s)
+- **Legendary**: All epic effects + Resistance + Jump boost + level up sound
+
+### 🔨 Crafting System
+Combine 9 Name Tags in a crafting table to create **Mob Essence**:
+```
+[N] [N] [N]
+[N] [N] [N]
+[N] [N] [N]
+```
+Using Mob Essence grants permanent bonuses (once per player):
+- Regeneration effect (24 hours)
+- Luck effect (30 minutes)
+- Night vision (1 hour)
+- 1000 experience points
+
+### 🧭 Tracking Feature
+Use Common Name Tags to locate nearby mobs of the same type within 100 blocks, showing:
+- Distance and direction
+- Exact coordinates
+- Temporary glowing effect
+
+### 🐾 Pet Summoning
+Epic and Legendary Name Tags can summon temporary pets:
+- **Epic Pets**: 15-minute companions with glowing effect
+- **Legendary Pets**: 30-minute companions with glowing + strength effects
+- Pets automatically disappear after their duration
 
 ## Contributing
 

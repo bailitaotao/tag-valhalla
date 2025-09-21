@@ -1,5 +1,5 @@
 /**
- * TagValhalla - 生物信息记录系统
+ * TagValhalla - Creature Information Recording System
  * 主入口文件
  */
 
@@ -20,24 +20,24 @@ class TagValhalla {
     init() {
         console.log('TagValhalla 插件已加载');
         
-        // 注册事件监听器
+        // Register event listeners
         this.eventHandler.registerEvents();
         
         // 启动定时任务
         this.startPeriodicTasks();
         
-        // 显示使用提示
+        // Display usage tips
         system.runTimeout(() => {
             console.log('=== TagValhalla 使用说明 ===');
-            console.log('1. 用名牌为生物命名，它们将被系统记录');
-            console.log('2. 生物死亡时会掉落包含详细信息的名牌');
-            console.log('3. 右键使用信息名牌查看生物的生存记录');
-            console.log('4. 与生物互动(喂食/抚摸)可增加好感度');
-        }, 60); // 3秒后显示使用提示
+            console.log('1. Use name tags to name creatures, they will be recorded by the system');
+            console.log('2. When creatures die, they will drop name tags containing detailed information');
+            console.log('3. Right-click to use info name tags to view creature survival records');
+            console.log('4. Interact with creatures (feed/pet) to increase affection');
+        }, 60); // Display usage tips after 3 seconds
     }
 
     startPeriodicTasks() {
-        // 每秒更新一次生物生存时间
+        // Update mob survival time every second
         system.runInterval(() => {
             this.mobDataManager.updateMobLifetime();
         }, 20); // 20 ticks = 1 second

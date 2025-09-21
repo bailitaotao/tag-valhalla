@@ -1,0 +1,22 @@
+{
+  "format_version": "1.20.0",
+  "minecraft:item": {
+    "description": {
+      "identifier": "tagvalhalla:mob_essence",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:max_stack_size": 64,
+      "minecraft:hand_equipped": false,
+      "minecraft:stacked_by_data": true,
+      "minecraft:foil": true,
+      "minecraft:display_name": {
+        "value": "§b生物精华§r"
+      },
+      "minecraft:use_duration": 32,
+      "minecraft:use_animation": "eat"
+    }
+  }
+}
