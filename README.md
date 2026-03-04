@@ -40,7 +40,6 @@ Want a meaningful way to remember your pets or legendary mobs? TagValhalla | Lif
 ## Project Structure
 
 ```
-```
 TagValhalla/
 ├── behavior_pack/                 # Behavior pack
 │   ├── manifest.json             # Behavior pack manifest
